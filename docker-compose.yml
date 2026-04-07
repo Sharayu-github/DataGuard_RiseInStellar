@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: dataguard_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: dataguard
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - dataguard_network
+
+  backend:
+    build: ./backend
+    container_name: dataguard_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/dataguard
+      - STELLAR_NETWORK=testnet
+      - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - FRONTEND_URL=http://localhost:5173
+      - JWT_SECRET=dev-secret-key
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+    networks:
+      - dataguard_network
+    command: npm run dev
+
+  frontend:
+    image: node:18
+    container_name: dataguard_frontend
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000/api
+      - VITE_STELLAR_NETWORK=testnet
+    volumes:
+      - .:/app
+    networks:
+      - dataguard_network
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+volumes:
+  mongodb_data:
+
+networks:
+  dataguard_network:
+    driver: bridge
